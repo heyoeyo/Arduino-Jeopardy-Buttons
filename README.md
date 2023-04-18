@@ -15,7 +15,7 @@ The code assumes 4 players by default, but this can be changed by simply adding/
 
 ### Extra complexity
 
-In theory, the code for repeatedly reading over buttons and lighting up corresponding LEDs should be fairly simple. However, looking through the actual code, it may seem much more complicated than expected! The added complexity comes from two sources. For one, there is some work done to *animate* the LEDs when they turn off, to help give some sense of a timer running out. The second source of complexity comes from doing some additional checks to prevent players from being able to hold down their button to answer after another player's timer runs out. For example, imagine one player is answering but gets the wrong answer, leaving other players to jump in. If every player were to hold down their button, then whoever has the button that appeats first in the simple reading loop would always get to answer first, without having to race/time their press to beat out other players. This seems unfair and also removes the fun of players frantically pressing their button to answer, so the code constantly checks that the buttons haven't been pushed recently when deciding whether to trigger the LEDs.
+In theory, the code for repeatedly reading over buttons and lighting up corresponding LEDs should be fairly simple. However, looking through the actual code, it may seem much more complicated than expected! The added complexity comes from two sources. For one, there is some work done to *animate* the LEDs when they turn off, to help give some sense of a timer running out. The second source of complexity comes from doing some additional checks to prevent players from being able to hold down their button to answer after another player's timer runs out. For example, imagine one player is answering but gets the wrong answer, leaving other players to jump in. If every player were to hold down their button, then whoever has the button that appears first in the simple reading loop would always get to answer first, without having to race/time their press to beat out other players. This seems unfair and also removes the fun of players frantically pressing their button to answer, so the code constantly checks that the buttons haven't been pushed recently when deciding whether to trigger the LEDs.
 
 
 ## LEDs
@@ -47,6 +47,10 @@ The signaling scheme that the LEDs use is referred to as 'unipolar non-return-to
 The signaling is basically a semi-analog system transmitted over digital signals, where there are 3 instructions: `0`, `1`, `reset` as well as a mechanism to ignore the `0` and `1` instructions.
 The three instructions (`0`, `1` and `reset`) are encoded using different [PWM](https://en.wikipedia.org/wiki/Pulse-width_modulation)-like signals, where the duty-cycle encodes the intended instruction. For example, `0` is represented using a ~32% duty-cycle while `1` uses a ~64% duty-cycle (assuming I'm interpretting the documentation correctly!). The `reset` signal is sort of like a 0% duty-cycle, but it must be maintained for a much longer period of time compared to the other signals (50us vs 1.2us).
 
+<p align="center">
+  <img src="github_images/signaling_components.webp">
+</p>
+
 Once an LED has received instructions to fully specify it's RGB state (which is 8 bits for each of the red, green and blue components, so 24 bits total), then it will ignore any `0` or `1` that gets sent until it receives a `reset` signal. The bits that it ignores are passed along to it's output which can be connected to other LEDs in sequence to drive them. This is how the LEDs appear to be 'addressable', since the first 24 bits will set the state of the first RGB LED, the next 24 bits set the 2nd LED etc. This also means that in order to change a single LED without affecting any others before it, you would first need to send a `reset` signal (i.e. send nothing for a while) and then re-send a duplicate set of bits that match the previous state for each LED before sending an updated set for the one LED you want to change. Note that the `reset` signal doesn't turn off the LEDs (they maintain their existing state), it just prevents them from ignoring instructions.
 
 <p align="center">
@@ -55,3 +59,6 @@ Once an LED has received instructions to fully specify it's RGB state (which is 
 
 Both the `0` and `1` signal start off in a 5V (high) state and transistion to 0V (low), so a continuous sequence of these signals will maintain a constant frequency, with each *rising-edge* indicating the beginning of each bit. This is (as far as I can tell) how this system manages to get away with using only 1 pin and doesn't require a dedicated clock signal like [SPI](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface) or [I2C](https://en.wikipedia.org/wiki/I%C2%B2C). It resembles [UART](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter) in some ways, though it's use of PWM-like signals is an interesting distinguishing feature.
 
+<p align="center">
+  <img src="github_images/rising_edges.webp">
+</p>
